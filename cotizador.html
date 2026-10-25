@@ -1,0 +1,587 @@
+<title>Cotizador de Pasajes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+<style>
+/* Layout: cartel de colectivo arriba; en el celular una columna con barra de copiar fija abajo; en la compu, formulario a la izquierda y mensaje a la derecha. */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --ink: #15202b;
+  --muted: #586675;
+  --line: #d3dae2;
+  --accent: #f0a400;
+  --accent-ink: #1d1500;
+  --sign-bg: #10161c;
+  --sign-fg: #ffb81c;
+  --bubble: #ddf5cf;
+  --bubble-ink: #15202b;
+  --chip: #e3e8ee;
+  --danger: #b4231b;
+  --font-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1218; --surface: #151e27; --ink: #e6ecf1; --muted: #93a2b0; --line: #26333f;
+    --accent: #ffb81c; --accent-ink: #1d1500; --sign-bg: #05080b; --sign-fg: #ffb81c;
+    --bubble: #1d3a2b; --bubble-ink: #e6ecf1; --chip: #1f2a35; --danger: #ff7a70;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1218; --surface: #151e27; --ink: #e6ecf1; --muted: #93a2b0; --line: #26333f;
+  --accent: #ffb81c; --accent-ink: #1d1500; --sign-bg: #05080b; --sign-fg: #ffb81c;
+  --bubble: #1d3a2b; --bubble-ink: #e6ecf1; --chip: #1f2a35; --danger: #ff7a70;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--sign-bg); }
+
+.sign { background: var(--sign-bg); color: var(--sign-fg); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.sign-inner { max-width: 1000px; margin: 0 auto; padding-block: 10px 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.sign-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sign h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 1.6rem; letter-spacing: .06em; text-transform: uppercase; text-shadow: 0 0 10px color-mix(in srgb, var(--sign-fg) 45%, transparent); }
+.demo-pill { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; border: 1px solid var(--sign-fg); border-radius: 999px; padding: 2px 8px; }
+.tabs { display: flex; gap: 4px; margin-top: 8px; }
+.tab { flex: 1; background: transparent; border: 0; color: #c9d2db; font: 600 .95rem var(--font-body); padding: 10px 6px; border-bottom: 3px solid transparent; cursor: pointer; }
+.tab[aria-selected="true"] { color: var(--sign-fg); border-bottom-color: var(--sign-fg); }
+.tab:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+main { max-width: 1000px; margin: 0 auto; padding-block: 16px 120px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.note { font-size: .85rem; color: var(--muted); margin: 0 0 14px; }
+.grid { display: grid; gap: 16px; }
+@media (min-width: 820px) { .grid.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } .preview-col { position: sticky; top: 110px; } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 14px; min-width: 0; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.label { font-size: .75rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+select, input[type="date"], input[type="number"], input[type="text"] {
+  width: 100%; font: 500 1rem var(--font-body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 44px;
+}
+.route { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 8px; align-items: end; }
+.swap { min-height: 44px; width: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); font-size: 1.2rem; cursor: pointer; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.chip { border: 1px solid var(--line); background: var(--chip); color: var(--ink); border-radius: 999px; padding: 8px 14px; font: 600 .95rem var(--font-body); cursor: pointer; min-height: 40px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip:disabled { opacity: .45; text-decoration: line-through; cursor: not-allowed; }
+.times .chip { font-variant-numeric: tabular-nums; font-family: var(--font-display); font-size: 1.1rem; letter-spacing: .03em; padding: 6px 12px; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stepper button { width: 44px; height: 44px; border: 0; background: var(--chip); color: var(--ink); font-size: 1.3rem; cursor: pointer; }
+.stepper output { min-width: 48px; text-align: center; font: 700 1.2rem var(--font-display); font-variant-numeric: tabular-nums; }
+.check { display: flex; gap: 10px; align-items: center; font-weight: 500; cursor: pointer; }
+.check input { width: 22px; height: 22px; accent-color: var(--accent); }
+.daytype { font-size: .85rem; color: var(--muted); }
+.subhead { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; letter-spacing: .04em; text-transform: uppercase; margin: 0; }
+.hint { font-size: .85rem; color: var(--muted); margin: 0; }
+
+.bubble-wrap { background: var(--bg); border-radius: 12px; padding: 14px; }
+.bubble { background: var(--bubble); color: var(--bubble-ink); border-radius: 12px 12px 4px 12px; padding: 12px 14px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .98rem; box-shadow: 0 1px 1px rgba(0,0,0,.08); }
+.bubble b { font-weight: 700; }
+.btn { border: 0; border-radius: 10px; padding: 12px 18px; min-height: 48px; font: 700 1rem var(--font-body); cursor: pointer; }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-ghost { background: var(--chip); color: var(--ink); border: 1px solid var(--line); }
+.btn-danger { background: var(--danger); color: var(--surface); }
+.btn-sm { min-height: 40px; padding: 8px 14px; font-size: .92rem; }
+
+.copybar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+  padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.copybar .inner { max-width: 1000px; margin: 0 auto; display: flex; gap: 12px; align-items: center; }
+.copybar .sum { flex: 1; min-width: 0; font-size: .9rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.copybar .sum strong { color: var(--ink); font-family: var(--font-display); font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+@media (min-width: 820px) { .copybar { display: none; } main { padding-bottom: 40px; } }
+.desk-copy { display: none; }
+@media (min-width: 820px) { .desk-copy { display: block; } }
+
+.tpl-list { display: grid; gap: 14px; }
+@media (min-width: 820px) { .tpl-list { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.tpl-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+
+details.tramo { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+details.tramo summary { cursor: pointer; padding: 12px 14px; display: flex; justify-content: space-between; gap: 10px; font-weight: 600; list-style: none; }
+details.tramo summary::-webkit-details-marker { display: none; }
+details.tramo summary .p { font-family: var(--font-display); font-size: 1.15rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tramo-body { padding: 0 14px 14px; display: grid; gap: 10px; }
+.cols { display: grid; gap: 10px; }
+@media (min-width: 620px) { .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.confirm { display: grid; gap: 10px; background: var(--chip); border-radius: 10px; padding: 12px; }
+
+.toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--sign-bg); color: var(--sign-fg); padding: 10px 18px; border-radius: 999px; font-weight: 600; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 20; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+
+<header class="sign">
+  <div class="sign-inner">
+    <div class="sign-row">
+      <h1>Cotizador de pasajes</h1>
+      <span class="demo-pill">Datos de ejemplo</span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-cotizar" aria-selected="true" data-view="cotizar">Cotizar</button>
+      <button class="tab" role="tab" id="tab-mensajes" aria-selected="false" data-view="mensajes">Mensajes</button>
+      <button class="tab" role="tab" id="tab-precios" aria-selected="false" data-view="precios">Precios</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- COTIZAR -->
+  <section id="view-cotizar">
+    <p class="note">Versión de prueba: los tramos, horarios y precios son inventados. Podés cambiarlos en la pestaña Precios.</p>
+    <div class="grid two">
+      <div class="panel">
+        <div class="route">
+          <label class="field"><span class="label">Origen</span><select id="origen"></select></label>
+          <button class="swap" id="swap" type="button" aria-label="Invertir origen y destino">⇄</button>
+          <label class="field"><span class="label">Destino</span><select id="destino"></select></label>
+        </div>
+
+        <div class="field">
+          <span class="label">Fecha de viaje</span>
+          <div class="row">
+            <button class="chip" type="button" id="hoy">Hoy</button>
+            <button class="chip" type="button" id="manana">Mañana</button>
+            <input type="date" id="fecha" style="flex:1; min-width: 150px;">
+          </div>
+          <label class="check"><input type="checkbox" id="feriado"> Es feriado (usa horarios de domingo)</label>
+          <span class="daytype" id="daytype"></span>
+        </div>
+
+        <div class="field">
+          <span class="label">Horario <span style="text-transform:none; letter-spacing:0; font-weight:500;">(opcional: tocá uno si el cliente ya eligió)</span></span>
+          <div class="row times" id="times"></div>
+        </div>
+
+        <div class="row" style="justify-content: space-between;">
+          <div class="field">
+            <span class="label">Pasajeros</span>
+            <div class="stepper">
+              <button type="button" id="menos" aria-label="Un pasajero menos">−</button>
+              <output id="pax">1</output>
+              <button type="button" id="mas" aria-label="Un pasajero más">+</button>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" id="iv"> Ida y vuelta</label>
+        </div>
+
+        <div class="field" id="vuelta-box" hidden>
+          <span class="label">Fecha de regreso</span>
+          <input type="date" id="fecha-vuelta">
+          <span class="label" style="margin-top:6px;">Horario de regreso (opcional)</span>
+          <div class="row times" id="times-vuelta"></div>
+        </div>
+      </div>
+
+      <div class="panel preview-col">
+        <h2 class="subhead">Mensaje para el cliente</h2>
+        <div class="bubble-wrap"><div class="bubble" id="preview"></div></div>
+        <div class="desk-copy"><button class="btn btn-primary" type="button" id="copiar-desk" style="width:100%">Copiar mensaje</button></div>
+        <p class="hint">Copiá, andá al chat de WhatsApp y pegá. Los asteriscos salen en negrita en WhatsApp.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENSAJES -->
+  <section id="view-mensajes" hidden>
+    <p class="note">Respuestas para el resto de la venta. Usan el tramo y horario que elegiste en Cotizar.</p>
+    <div class="tpl-list" id="tpl-list"></div>
+  </section>
+
+  <!-- PRECIOS -->
+  <section id="view-precios" hidden>
+    <p class="note">Lo que cambies acá se guarda en este dispositivo y se usa en todos los mensajes.</p>
+    <div class="grid">
+      <div class="panel">
+        <h2 class="subhead">Aumento general</h2>
+        <div class="row">
+          <input type="number" id="pct" value="10" min="1" max="200" style="width:110px;" aria-label="Porcentaje de aumento">
+          <span>%</span>
+          <button class="btn btn-ghost btn-sm" type="button" id="aumentar">Aplicar a todos los tramos</button>
+        </div>
+        <div class="confirm" id="confirm-aumento" hidden></div>
+        <p class="hint">Los precios se redondean a los $100.</p>
+      </div>
+
+      <div class="panel">
+        <h2 class="subhead">Tramos</h2>
+        <p class="hint">Horarios separados por coma, por ejemplo: 06:00, 10:30, 19:45</p>
+        <div class="grid" id="tramos-edit"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="subhead">Datos de pago</h2>
+        <div class="cols">
+          <label class="field"><span class="label">Alias</span><input type="text" id="alias"></label>
+          <label class="field"><span class="label">Titular</span><input type="text" id="titular"></label>
+        </div>
+        <label class="field"><span class="label">CBU</span><input type="text" id="cbu"></label>
+      </div>
+
+      <div class="panel">
+        <button class="btn btn-ghost btn-sm" type="button" id="restaurar">Volver a los datos de ejemplo</button>
+        <div class="confirm" id="confirm-restaurar" hidden>
+          <span>Se borran tus cambios de precios y horarios.</span>
+          <div class="row">
+            <button class="btn btn-danger btn-sm" type="button" id="restaurar-si">Sí, restaurar</button>
+            <button class="btn btn-ghost btn-sm" type="button" id="restaurar-no">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="copybar" id="copybar">
+  <div class="inner">
+    <div class="sum" id="sum"></div>
+    <button class="btn btn-primary" type="button" id="copiar">Copiar mensaje</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  const STORE_KEY = 'cotizador-pasajes-demo-v1';
+
+  // Datos inventados para la prueba
+  const DEMO = {
+    alias: 'PASAJES.EJEMPLO.MP',
+    titular: 'Nombre Apellido',
+    cbu: '0000000000000000000000',
+    terminales: {
+      'Buenos Aires': 'Terminal de Ómnibus Retiro, boleterías planta alta',
+      'Rosario': 'Terminal Mariano Moreno, boletería en planta baja',
+      'San Nicolás': 'Terminal de Ómnibus San Nicolás',
+      'Pergamino': 'Terminal de Ómnibus Pergamino',
+      'Junín': 'Terminal de Ómnibus Junín'
+    },
+    tramos: [
+      { id: 'ba-ros', a: 'Buenos Aires', b: 'Rosario', precio: 32000, dur: '4 h',
+        ida:    { habil: ['06:00','08:30','11:00','14:30','17:00','19:45','23:30'], sabado: ['07:00','11:00','15:00','19:45','23:30'], domingo: ['08:00','13:00','18:00','23:30'] },
+        vuelta: { habil: ['05:30','08:00','10:30','14:00','17:30','20:00','23:45'], sabado: ['06:30','10:30','15:30','20:00'], domingo: ['09:00','14:00','18:30','23:45'] } },
+      { id: 'ba-sn', a: 'Buenos Aires', b: 'San Nicolás', precio: 24500, dur: '3 h',
+        ida:    { habil: ['06:00','09:00','13:00','17:00','20:30'], sabado: ['07:00','12:00','18:00'], domingo: ['09:00','17:00'] },
+        vuelta: { habil: ['05:45','09:30','13:30','17:30','21:00'], sabado: ['07:30','13:00','19:00'], domingo: ['10:00','18:30'] } },
+      { id: 'ba-per', a: 'Buenos Aires', b: 'Pergamino', precio: 26800, dur: '3 h 30 min',
+        ida:    { habil: ['07:00','12:00','16:30','21:00'], sabado: ['08:00','16:00'], domingo: ['10:00','19:00'] },
+        vuelta: { habil: ['06:00','11:00','16:00','20:00'], sabado: ['07:00','17:00'], domingo: ['09:30','18:00'] } },
+      { id: 'ba-jun', a: 'Buenos Aires', b: 'Junín', precio: 29500, dur: '4 h 15 min',
+        ida:    { habil: ['06:30','10:00','15:00','22:00'], sabado: ['08:30','15:00'], domingo: ['11:00','20:00'] },
+        vuelta: { habil: ['05:30','11:30','16:00','21:30'], sabado: ['07:00','16:30'], domingo: ['10:30','19:30'] } },
+      { id: 'ros-per', a: 'Rosario', b: 'Pergamino', precio: 15200, dur: '2 h',
+        ida:    { habil: ['07:30','12:30','18:00'], sabado: ['09:00','17:00'], domingo: ['17:00'] },
+        vuelta: { habil: ['06:30','11:00','17:30'], sabado: ['08:00','16:00'], domingo: ['19:00'] } }
+    ]
+  };
+  // Feriados inamovibles próximos (se marcan solos)
+  const FERIADOS = ['2026-12-08', '2026-12-25', '2027-01-01'];
+  const DIAS = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const TIPO_LABEL = { habil: 'día hábil', sabado: 'sábado', domingo: 'domingo/feriado' };
+
+  const clone = o => JSON.parse(JSON.stringify(o));
+  let data = clone(DEMO);
+  try { const s = localStorage.getItem(STORE_KEY); if (s) data = Object.assign(clone(DEMO), JSON.parse(s)); } catch (e) {}
+  function save() { try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {} }
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const money = n => '$' + Math.round(n).toLocaleString('es-AR');
+  const pad = n => String(n).padStart(2, '0');
+  const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const parseISO = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+  const state = { origen: 'Buenos Aires', destino: 'Rosario', fecha: iso(today()), feriado: false, hora: null,
+                  pax: 2, iv: false, fechaVuelta: iso(addDays(today(), 2)), horaVuelta: null, feriadoVuelta: false };
+  state.feriado = FERIADOS.includes(state.fecha);
+
+  function cities() { const s = new Set(); data.tramos.forEach(t => { s.add(t.a); s.add(t.b); }); return [...s]; }
+  function destinosDe(o) { return data.tramos.filter(t => t.a === o || t.b === o).map(t => t.a === o ? t.b : t.a); }
+  function findLeg(o, d) {
+    const t = data.tramos.find(t => (t.a === o && t.b === d) || (t.a === d && t.b === o));
+    if (!t) return null;
+    return { tramo: t, sched: t.a === o ? t.ida : t.vuelta };
+  }
+  function dayType(fechaISO, feriado) {
+    if (feriado) return 'domingo';
+    const g = parseISO(fechaISO).getDay();
+    return g === 0 ? 'domingo' : g === 6 ? 'sabado' : 'habil';
+  }
+  function fechaTxt(fechaISO) {
+    const d = parseISO(fechaISO);
+    const diff = Math.round((d - today()) / 864e5);
+    const base = DIAS[d.getDay()] + ' ' + pad(d.getDate()) + '/' + pad(d.getMonth() + 1);
+    return diff === 0 ? 'Hoy, ' + base : diff === 1 ? 'Mañana, ' + base : base;
+  }
+  // Horarios del día; si es hoy, los que ya salieron quedan marcados
+  function horarios(sched, fechaISO, feriado) {
+    const list = (sched[dayType(fechaISO, feriado)] || []).slice().sort();
+    const now = new Date();
+    const esHoy = fechaISO === iso(today());
+    const nowStr = pad(now.getHours()) + ':' + pad(now.getMinutes());
+    return list.map(h => ({ h, salio: esHoy && h <= nowStr }));
+  }
+
+  /* ---------- COTIZAR ---------- */
+  function fillSelects() {
+    const cs = cities();
+    if (!cs.includes(state.origen)) state.origen = cs[0];
+    $('origen').innerHTML = cs.map(c => `<option${c === state.origen ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    const ds = destinosDe(state.origen);
+    if (!ds.includes(state.destino)) state.destino = ds[0];
+    $('destino').innerHTML = ds.map(c => `<option${c === state.destino ? ' selected' : ''}>${esc(c)}</option>`).join('');
+  }
+  function renderTimes(elId, list, selected, key) {
+    $(elId).innerHTML = list.length
+      ? list.map(x => `<button type="button" class="chip" data-key="${key}" data-h="${x.h}" aria-pressed="${x.h === selected}"${x.salio ? ' disabled title="Ya salió"' : ''}>${x.h}</button>`).join('')
+      : '<span class="hint">No hay salidas ese día.</span>';
+  }
+
+  function buildQuote() {
+    const leg = findLeg(state.origen, state.destino);
+    if (!leg) return { text: 'Elegí origen y destino.', total: 0 };
+    const t = leg.tramo;
+    const ida = horarios(leg.sched, state.fecha, state.feriado);
+    const disponibles = ida.filter(x => !x.salio).map(x => x.h);
+    if (state.hora && !disponibles.includes(state.hora)) state.hora = null;
+    const lines = [];
+    lines.push(`🚌 *${state.origen} → ${state.destino}*`);
+    lines.push(`📅 ${fechaTxt(state.fecha)}`);
+    lines.push('');
+    if (state.hora) {
+      lines.push(`🕐 Salida: *${state.hora}* (viaje de ${t.dur} aprox.)`);
+    } else if (disponibles.length) {
+      lines.push(state.fecha === iso(today()) ? 'Salidas que quedan hoy:' : 'Horarios:');
+      disponibles.forEach(h => lines.push('• ' + h));
+      lines.push(`_Duración aprox.: ${t.dur}_`);
+    } else {
+      const man = addDays(parseISO(state.fecha), 1);
+      const prox = horarios(leg.sched, iso(man), FERIADOS.includes(iso(man)))[0];
+      lines.push(state.fecha === iso(today()) ? 'Para hoy ya no quedan salidas 😕' : 'Ese día no hay salidas 😕');
+      if (prox) lines.push(`La próxima es ${fechaTxt(iso(man)).toLowerCase()} a las ${prox.h}.`);
+    }
+
+    let total = t.precio * state.pax;
+    if (state.iv) {
+      const legV = findLeg(state.destino, state.origen);
+      const vuelta = horarios(legV.sched, state.fechaVuelta, state.feriadoVuelta).filter(x => !x.salio).map(x => x.h);
+      if (state.horaVuelta && !vuelta.includes(state.horaVuelta)) state.horaVuelta = null;
+      lines.push('');
+      lines.push(`🔁 *Regreso ${state.destino} → ${state.origen}*`);
+      lines.push(`📅 ${fechaTxt(state.fechaVuelta)}`);
+      if (state.horaVuelta) lines.push(`🕐 Salida: *${state.horaVuelta}*`);
+      else if (vuelta.length) lines.push('Horarios: ' + vuelta.join(' · '));
+      else lines.push('Ese día no hay salidas de regreso.');
+      total *= 2;
+    }
+
+    lines.push('');
+    lines.push(`💲 ${money(t.precio)} por pasajero${state.iv ? ' (cada tramo)' : ''}`);
+    if (state.pax > 1 || state.iv) {
+      const detalle = state.pax + (state.pax === 1 ? ' pasajero' : ' pasajeros') + (state.iv ? ', ida y vuelta' : '');
+      lines.push(`👥 ${detalle}: *${money(total)}*`);
+    }
+    lines.push('');
+    if (state.hora && (!state.iv || state.horaVuelta)) {
+      lines.push('¿Te lo reservo? Pasame nombre completo y DNI de cada pasajero.');
+    } else if (disponibles.length || state.hora) {
+      lines.push('¿En qué horario te gustaría viajar?');
+    } else {
+      lines.push('¿Te sirve otro día?');
+    }
+    return { text: lines.join('\n'), total, tramo: t };
+  }
+  // Vista previa con las negritas/cursivas de WhatsApp
+  function waFormat(text) {
+    return esc(text).replace(/\*([^*\n]+)\*/g, '<b>$1</b>').replace(/(^|\s)_([^_\n]+)_/g, '$1<i>$2</i>');
+  }
+
+  let lastText = '';
+  function renderCotizar() {
+    fillSelects();
+    $('fecha').value = state.fecha;
+    $('feriado').checked = state.feriado;
+    $('pax').textContent = state.pax;
+    $('iv').checked = state.iv;
+    $('vuelta-box').hidden = !state.iv;
+    $('fecha-vuelta').value = state.fechaVuelta;
+    $('hoy').setAttribute('aria-pressed', state.fecha === iso(today()));
+    $('manana').setAttribute('aria-pressed', state.fecha === iso(addDays(today(), 1)));
+    const leg = findLeg(state.origen, state.destino);
+    $('daytype').textContent = 'Horarios de ' + TIPO_LABEL[dayType(state.fecha, state.feriado)];
+    if (leg) renderTimes('times', horarios(leg.sched, state.fecha, state.feriado), state.hora, 'ida');
+    if (state.iv) {
+      const legV = findLeg(state.destino, state.origen);
+      if (legV) renderTimes('times-vuelta', horarios(legV.sched, state.fechaVuelta, state.feriadoVuelta), state.horaVuelta, 'vuelta');
+    }
+    const q = buildQuote();
+    lastText = q.text;
+    $('preview').innerHTML = waFormat(q.text);
+    $('sum').innerHTML = `${esc(state.origen)} → ${esc(state.destino)} · ${state.pax} pax · <strong>${money(q.total)}</strong>`;
+    renderMensajes();
+  }
+
+  $('origen').addEventListener('change', e => { state.origen = e.target.value; state.hora = state.horaVuelta = null; renderCotizar(); });
+  $('destino').addEventListener('change', e => { state.destino = e.target.value; state.hora = state.horaVuelta = null; renderCotizar(); });
+  $('swap').addEventListener('click', () => { [state.origen, state.destino] = [state.destino, state.origen]; state.hora = state.horaVuelta = null; renderCotizar(); });
+  function setFecha(f) {
+    state.fecha = f; state.feriado = FERIADOS.includes(f); state.hora = null;
+    if (state.fechaVuelta < f) { state.fechaVuelta = f; state.feriadoVuelta = FERIADOS.includes(f); }
+    renderCotizar();
+  }
+  $('hoy').addEventListener('click', () => setFecha(iso(today())));
+  $('manana').addEventListener('click', () => setFecha(iso(addDays(today(), 1))));
+  $('fecha').addEventListener('change', e => { if (e.target.value) setFecha(e.target.value); });
+  $('feriado').addEventListener('change', e => { state.feriado = e.target.checked; state.hora = null; renderCotizar(); });
+  $('menos').addEventListener('click', () => { state.pax = Math.max(1, state.pax - 1); renderCotizar(); });
+  $('mas').addEventListener('click', () => { state.pax = Math.min(60, state.pax + 1); renderCotizar(); });
+  $('iv').addEventListener('change', e => { state.iv = e.target.checked; renderCotizar(); });
+  $('fecha-vuelta').addEventListener('change', e => {
+    if (!e.target.value) return;
+    state.fechaVuelta = e.target.value < state.fecha ? state.fecha : e.target.value;
+    state.feriadoVuelta = FERIADOS.includes(state.fechaVuelta); state.horaVuelta = null; renderCotizar();
+  });
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.times .chip');
+    if (!b || b.disabled) return;
+    const k = b.dataset.key === 'ida' ? 'hora' : 'horaVuelta';
+    state[k] = state[k] === b.dataset.h ? null : b.dataset.h;
+    renderCotizar();
+  });
+
+  /* ---------- COPIAR ---------- */
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+  }
+  function copy(text) {
+    const fallback = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      toast(ok ? 'Mensaje copiado' : 'No se pudo copiar: mantené apretado el texto para copiarlo');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => toast('Mensaje copiado'), fallback);
+    } else fallback();
+  }
+  $('copiar').addEventListener('click', () => copy(lastText));
+  $('copiar-desk').addEventListener('click', () => copy(lastText));
+
+  /* ---------- MENSAJES ---------- */
+  function templates() {
+    const leg = findLeg(state.origen, state.destino);
+    const term = data.terminales[state.origen] || 'la terminal de ' + state.origen;
+    const otros = leg ? horarios(leg.sched, state.fecha, state.feriado).filter(x => !x.salio && x.h !== state.hora).map(x => x.h).slice(0, 4) : [];
+    return [
+      { id: 'datos', titulo: 'Pedir datos del viaje', text:
+        '¡Hola! 👋 Para cotizarte más rápido, mandame en un solo mensaje:\n\n📍 Origen y destino\n📅 Fecha de viaje (y de regreso si es ida y vuelta)\n🕐 Horario aproximado (mañana / tarde / noche)\n👥 Cantidad de pasajeros' },
+      { id: 'pasajeros', titulo: 'Datos para emitir', text:
+        `Perfecto 🙌 Para emitir el pasaje${state.hora ? ` de las ${state.hora}` : ''} necesito de cada pasajero:\n• Nombre y apellido\n• DNI` },
+      { id: 'pago', titulo: 'Formas de pago', text:
+        `💳 Podés pagar por transferencia:\nAlias: *${data.alias}*\nCBU: ${data.cbu}\nTitular: ${data.titular}\n\nCuando transfieras, mandame el comprobante y te envío el pasaje.` },
+      { id: 'enviado', titulo: 'Pasaje enviado', text:
+        `✅ ¡Listo! Te envío tu pasaje.\n\n📍 Salida desde ${term}${state.hora ? `, ${fechaTxt(state.fecha).toLowerCase()} a las *${state.hora}*` : ''}.\nPresentate 30 minutos antes con tu DNI.\n\n¡Buen viaje! 🚌` },
+      { id: 'sinlugar', titulo: 'Sin lugar en ese horario', text:
+        `Uy, para ese horario ya no quedan lugares 😕\n${otros.length ? 'Tengo disponible:\n' + otros.map(h => '• ' + h).join('\n') + '\n¿Te sirve alguno?' : '¿Te sirve otro día?'}` },
+      { id: 'espera', titulo: 'Ganar un minuto', text:
+        'Dame un minutito que lo reviso en el sistema y te confirmo 🙌' }
+    ];
+  }
+  function renderMensajes() {
+    $('tpl-list').innerHTML = templates().map(t => `
+      <div class="panel">
+        <div class="tpl-head"><h3 class="subhead">${esc(t.titulo)}</h3>
+          <button class="btn btn-primary btn-sm" type="button" data-copy="${t.id}">Copiar</button></div>
+        <div class="bubble-wrap"><div class="bubble">${waFormat(t.text)}</div></div>
+      </div>`).join('');
+  }
+  $('tpl-list').addEventListener('click', e => {
+    const b = e.target.closest('[data-copy]'); if (!b) return;
+    const t = templates().find(x => x.id === b.dataset.copy); if (t) copy(t.text);
+  });
+
+  /* ---------- PRECIOS ---------- */
+  const normH = s => s.split(/[,\s]+/).map(x => x.trim()).filter(Boolean).map(x => {
+    const m = x.match(/^(\d{1,2})[:.]?(\d{2})?$/); if (!m) return null;
+    const h = +m[1], mi = +(m[2] || 0); if (h > 23 || mi > 59) return null;
+    return pad(h) + ':' + pad(mi);
+  }).filter(Boolean);
+
+  function renderPrecios() {
+    $('tramos-edit').innerHTML = data.tramos.map((t, i) => {
+      const hf = (dir, tipo, lbl) => `<label class="field"><span class="label">${lbl}</span>
+        <input type="text" id="h-${t.id}-${dir}-${tipo}" data-i="${i}" data-dir="${dir}" data-tipo="${tipo}" value="${esc(t[dir][tipo].join(', '))}"></label>`;
+      return `<details class="tramo">
+        <summary><span>${esc(t.a)} ⇄ ${esc(t.b)}</span><span class="p">${money(t.precio)}</span></summary>
+        <div class="tramo-body">
+          <label class="field"><span class="label">Precio por pasajero (un tramo)</span>
+            <input type="number" id="p-${t.id}" data-i="${i}" data-precio="1" min="0" step="100" value="${t.precio}"></label>
+          <div class="cols">
+            <div class="grid" style="gap:10px;"><strong>${esc(t.a)} → ${esc(t.b)}</strong>
+              ${hf('ida', 'habil', 'Lunes a viernes')}${hf('ida', 'sabado', 'Sábados')}${hf('ida', 'domingo', 'Domingos y feriados')}</div>
+            <div class="grid" style="gap:10px;"><strong>${esc(t.b)} → ${esc(t.a)}</strong>
+              ${hf('vuelta', 'habil', 'Lunes a viernes')}${hf('vuelta', 'sabado', 'Sábados')}${hf('vuelta', 'domingo', 'Domingos y feriados')}</div>
+          </div>
+        </div></details>`;
+    }).join('');
+    $('alias').value = data.alias; $('titular').value = data.titular; $('cbu').value = data.cbu;
+  }
+  $('tramos-edit').addEventListener('change', e => {
+    const el = e.target; const t = data.tramos[+el.dataset.i]; if (!t) return;
+    if (el.dataset.precio) {
+      const v = Math.max(0, Math.round(+el.value || 0));
+      t.precio = v; el.closest('details').querySelector('.p').textContent = money(v);
+    } else {
+      t[el.dataset.dir][el.dataset.tipo] = normH(el.value).sort();
+      el.value = t[el.dataset.dir][el.dataset.tipo].join(', ');
+    }
+    save(); renderCotizar(); toast('Guardado');
+  });
+  ['alias', 'titular', 'cbu'].forEach(k => $(k).addEventListener('change', e => { data[k] = e.target.value.trim(); save(); renderMensajes(); toast('Guardado'); }));
+
+  $('aumentar').addEventListener('click', () => {
+    const pct = +$('pct').value;
+    const box = $('confirm-aumento');
+    if (!(pct > 0)) { box.hidden = false; box.innerHTML = '<span>Poné un porcentaje mayor a 0.</span>'; return; }
+    const ej = data.tramos[0];
+    box.hidden = false;
+    box.innerHTML = `<span>Subir ${pct}% a los ${data.tramos.length} tramos. Ejemplo: ${esc(ej.a)} ⇄ ${esc(ej.b)} pasa de ${money(ej.precio)} a ${money(Math.round(ej.precio * (1 + pct / 100) / 100) * 100)}.</span>
+      <div class="row"><button class="btn btn-primary btn-sm" type="button" id="aum-si">Sí, aplicar</button>
+      <button class="btn btn-ghost btn-sm" type="button" id="aum-no">Cancelar</button></div>`;
+    $('aum-si').onclick = () => {
+      data.tramos.forEach(t => { t.precio = Math.round(t.precio * (1 + pct / 100) / 100) * 100; });
+      save(); box.hidden = true; renderPrecios(); renderCotizar(); toast(`Precios subidos ${pct}%`);
+    };
+    $('aum-no').onclick = () => { box.hidden = true; };
+  });
+  $('restaurar').addEventListener('click', () => { $('confirm-restaurar').hidden = false; });
+  $('restaurar-no').addEventListener('click', () => { $('confirm-restaurar').hidden = true; });
+  $('restaurar-si').addEventListener('click', () => {
+    data = clone(DEMO); save(); $('confirm-restaurar').hidden = true; renderPrecios(); renderCotizar(); toast('Datos de ejemplo restaurados');
+  });
+
+  /* ---------- PESTAÑAS ---------- */
+  function show(view) {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', t.dataset.view === view));
+    ['cotizar', 'mensajes', 'precios'].forEach(v => { $('view-' + v).hidden = v !== view; });
+    $('copybar').hidden = view !== 'cotizar';
+    window.scrollTo(0, 0);
+  }
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => show(t.dataset.view)));
+
+  renderPrecios();
+  renderCotizar();
+  const h = (location.hash || '').slice(1);
+  if (['mensajes', 'precios'].includes(h)) show(h);
+})();
+</script>
